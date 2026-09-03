@@ -197,3 +197,4 @@ export class StellarLatexEngine {
     this.pending = undefined;
   };
 }
+

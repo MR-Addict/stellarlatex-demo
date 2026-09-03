@@ -1,0 +1,110 @@
+\documentclass[UTF8,11pt]{ctexart}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{stellarblue}{HTML}{2563A8}
+\hypersetup{colorlinks=true,linkcolor=stellarblue,urlcolor=stellarblue}
+
+\title{StellarLatex 中文示例}
+\author{浏览器中的 \LaTeX{} 工作台}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+本文档展示常用的 \LaTeX{} 排版功能，并使用 XeTeX 在浏览器中完成编译。
+源文件与生成的 PDF 都保留在本地，不会上传到服务器。
+\end{abstract}
+
+\section{文字与段落}
+
+这是普通正文。你可以使用 \textbf{粗体}、\textit{斜体}、
+\underline{下划线}，也可以用 \textcolor{stellarblue}{彩色文字}突出重点。
+行内公式写作 $E=mc^2$，脚注则像这样添加\footnote{这是一个脚注示例。}。
+
+\begin{quote}
+优雅的排版，应当让读者关注内容本身，而不是排版工具。
+\end{quote}
+
+项目主页：\href{https://github.com/Arxtect/StellarLatex}{StellarLatex on GitHub}。
+
+\section{列表}
+
+无序列表适合并列内容：
+\begin{itemize}
+  \item 浏览器内运行 WebAssembly；
+  \item 支持中文与数学公式；
+  \item 一键生成并下载 PDF。
+\end{itemize}
+
+有序列表适合描述步骤：
+\begin{enumerate}
+  \item 编辑左侧的源代码；
+  \item 点击“编译 PDF”；
+  \item 在右侧查看结果。
+\end{enumerate}
+
+\section{数学公式}
+
+正态分布密度函数为
+\begin{equation*}
+  f(x)=\frac{1}{\sigma\sqrt{2\pi}}
+  \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right).
+\end{equation*}
+其中 $\mu$ 是均值，$\sigma$ 是标准差。上式还展示了
+分数、根号、指数和自动伸缩括号。
+
+多行公式可以使用 \texttt{align} 环境：
+\begin{align*}
+  (a+b)^2 &= a^2+2ab+b^2, \\
+  \sum_{k=1}^{n} k &= \frac{n(n+1)}{2}.
+\end{align*}
+
+\section{表格与图片}
+
+下面使用 \texttt{booktabs} 绘制一个常见的三线表。
+\begin{table}[htbp]
+  \centering
+  \caption{浏览器 LaTeX 引擎对比}
+  \begin{tabular}{lcc}
+    \toprule
+    引擎 & 中文支持 & 输出格式 \\
+    \midrule
+    pdfTeX & 需要额外字体配置 & PDF \\
+    XeTeX  & 原生 Unicode 支持 & PDF \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+下面是一个无需外部文件的图片占位区域。实际项目中可使用
+\verb|\includegraphics[width=0.8\linewidth]{image.png}| 插入图片。
+\begin{figure}[htbp]
+  \centering
+  \fbox{\rule{0pt}{3cm}\rule{0.72\linewidth}{0pt}}
+  \caption{图片占位区域}
+\end{figure}
+
+\section{代码与参考文献}
+
+简单代码可以放入 \texttt{verbatim} 环境：
+\begin{verbatim}
+for item in data:
+    print(item)
+\end{verbatim}
+
+文献引用通常使用 \verb|\cite| 命令，并在文末通过参考文献环境列出来源。
+
+\begin{thebibliography}{9}
+  \bibitem{knuth1984texbook}
+  Donald E. Knuth.
+  \textit{The TeXbook}.
+  Addison-Wesley, 1984.
+\end{thebibliography}
+
+\end{document}

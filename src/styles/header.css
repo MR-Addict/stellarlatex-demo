@@ -1,0 +1,123 @@
+.topbar {
+  height: 58px;
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.9);
+  backdrop-filter: blur(18px);
+  position: relative;
+  z-index: 20;
+}
+
+.brand {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: start;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(112, 178, 241, 0.3);
+  border-radius: 9px;
+  background: linear-gradient(145deg, rgba(81, 151, 222, 0.2), rgba(81, 151, 222, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.brand-mark svg {
+  width: 22px;
+  fill: var(--accent-bright);
+}
+
+.brand-mark .spark { fill: var(--green); }
+
+.brand > span:last-child,
+.engine-state > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand > span:last-child { gap: 1px; }
+
+.brand strong {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+}
+
+.brand small {
+  color: #687b90;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.engine-state {
+  min-width: 0;
+  max-width: 420px;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.engine-state > div { gap: 2px; }
+
+.engine-state strong,
+.engine-state small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.engine-state strong {
+  color: #c9d4df;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.engine-state small {
+  color: #687b90;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+}
+
+.topbar-actions,
+.preview-actions {
+  display: flex;
+  align-items: center;
+}
+
+.topbar-actions {
+  gap: 8px;
+  justify-self: end;
+}
+
+.privacy-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #76899e;
+  font-size: 10px;
+}
+
+.privacy-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(82, 214, 160, 0.08);
+}
+
