@@ -2,6 +2,7 @@ import sampleSource from "./content/sample.tex?raw";
 import { SourceStorage } from "./services/source-storage";
 import {
   StellarLatexEngine,
+  type EngineCacheSnapshot,
   type EngineKind,
 } from "./services/stellar-latex-engine";
 import { EditorView } from "./views/editor-view";
@@ -44,6 +45,7 @@ export class LatexWorkspaceApp {
 
   private engine?: StellarLatexEngine;
   private readonly compileCache = new Map<EngineKind, CachedCompile>();
+  private readonly engineCaches = new Map<EngineKind, EngineCacheSnapshot>();
   private displayedCompile?: DisplayedCompile;
   private isCompiling = false;
   private lastCompiledSource = "";
@@ -74,6 +76,7 @@ export class LatexWorkspaceApp {
     this.storage.save(this.editor.source);
     this.engine?.dispose();
     this.compileCache.clear();
+    this.engineCaches.clear();
     this.displayedCompile = undefined;
     this.preview.dispose();
     this.editor.dispose();
@@ -94,7 +97,7 @@ export class LatexWorkspaceApp {
   }
 
   private async loadEngine(kind: EngineKind, compileWhenReady = false): Promise<void> {
-    this.engine?.dispose();
+    const previousEngine = this.engine;
     this.engine = undefined;
     this.workspace.setControls({
       canCompile: false,
@@ -108,10 +111,24 @@ export class LatexWorkspaceApp {
       "Loading the WebAssembly runtime",
     );
 
+    if (previousEngine) {
+      const cache = await previousEngine.exportCache();
+      if (cache) this.engineCaches.set(previousEngine.kind, cache);
+      previousEngine.dispose();
+    }
+
     const startedAt = performance.now();
-    const nextEngine = new StellarLatexEngine(kind, (message) => {
-      this.workspace.setStatusDetail(message.replace(/^Loading resource\s+/i, "Fetching "));
-    });
+    const engineCache = this.engineCaches.get(kind);
+    this.engineCaches.delete(kind);
+    const nextEngine = new StellarLatexEngine(
+      kind,
+      (message) => {
+        this.workspace.setStatusDetail(
+          message.replace(/^Loading resource\s+/i, "Loading TeX resource "),
+        );
+      },
+      engineCache,
+    );
 
     try {
       await nextEngine.load();
@@ -181,7 +198,7 @@ export class LatexWorkspaceApp {
       this.workspace.setCompilerLog(result.log);
       this.workspace.setDuration(elapsed + "s");
 
-      if (result.pdf) {
+      if (result.ok && result.pdf) {
         await this.preview.render(result.pdf);
         this.workspace.setDownloadEnabled(true);
       }
@@ -198,7 +215,12 @@ export class LatexWorkspaceApp {
         this.workspace.setStatus(
           "ready",
           "PDF compiled successfully",
-          engineName(kind) + " finished in " + elapsed + "s",
+          result.recoveredAfterAbort
+            ? engineName(kind) +
+                " recovered after one worker restart · " +
+                elapsed +
+                "s"
+            : engineName(kind) + " finished in " + elapsed + "s",
         );
         this.workspace.setLogOpen(false);
       } else {
