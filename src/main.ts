@@ -1,13 +1,15 @@
 import "./styles.css";
-import {
-  getDocument,
-  GlobalWorkerOptions,
-  type PDFDocumentProxy,
-} from "pdfjs-dist";
+import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+import MonacoEditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { StellarLatexEngine, type EngineKind } from "./stellar-engine";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+window.MonacoEnvironment = {
+  getWorker: () => new MonacoEditorWorker(),
+};
 
 const pdfAssetBaseUrl = new URL(`${import.meta.env.BASE_URL}pdfjs/`, document.baseURI);
 
@@ -123,20 +125,13 @@ for item in data:
 \end{document}
 `;
 
-interface ReleaseManifest {
-  tagName: string;
-  assetName: string;
-  browserDownloadUrl: string;
-}
-
 const get = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing UI element: ${id}`);
   return element as T;
 };
 
-const editor = get<HTMLTextAreaElement>("source-editor");
-const lineNumbers = get<HTMLDivElement>("line-numbers");
+const editorElement = get<HTMLDivElement>("source-editor");
 const sourceStats = get<HTMLSpanElement>("source-stats");
 const dirtyIndicator = get<HTMLSpanElement>("dirty-indicator");
 const engineSelect = get<HTMLSelectElement>("engine-select");
@@ -160,9 +155,101 @@ const logDrawer = get<HTMLElement>("log-drawer");
 const logButton = get<HTMLButtonElement>("log-button");
 const closeLogButton = get<HTMLButtonElement>("close-log-button");
 const showLogButton = get<HTMLButtonElement>("show-log-button");
-const releaseLink = get<HTMLAnchorElement>("release-link");
-const releaseVersion = get<HTMLElement>("release-version");
-const footerVersion = get<HTMLElement>("footer-version");
+
+monaco.languages.register({ id: "latex", extensions: [".tex"], aliases: ["LaTeX", "latex"] });
+monaco.languages.setLanguageConfiguration("latex", {
+  comments: { lineComment: "%" },
+  brackets: [
+    ["{", "}"],
+    ["[", "]"],
+    ["(", ")"],
+  ],
+  autoClosingPairs: [
+    { open: "{", close: "}" },
+    { open: "[", close: "]" },
+    { open: "(", close: ")" },
+    { open: "$", close: "$" },
+  ],
+  surroundingPairs: [
+    { open: "{", close: "}" },
+    { open: "[", close: "]" },
+    { open: "(", close: ")" },
+    { open: "$", close: "$" },
+  ],
+});
+monaco.languages.setMonarchTokensProvider("latex", {
+  tokenizer: {
+    root: [
+      [/%.*$/, "comment"],
+      [
+        /\\(?:documentclass|usepackage|begin|end|title|author|date|maketitle|section|subsection|subsubsection|paragraph|label|ref|cite|item|caption|includegraphics|definecolor|hypersetup)\b/,
+        "keyword",
+      ],
+      [
+        /\\(?:textbf|textit|texttt|textcolor|underline|href|verb|footnote|frac|sqrt|sum|exp|LaTeX|today)\b/,
+        "type.identifier",
+      ],
+      [/\\[a-zA-Z@]+|\\./, "tag"],
+      [/\$\$[^$]*\$\$|\$[^$\n]*\$/, "string"],
+      [/[{}\[\]()]/, "delimiter"],
+      [/&|\\\\/, "operator"],
+      [/\b\d+(?:\.\d+)?\b/, "number"],
+    ],
+  },
+});
+monaco.editor.defineTheme("stellar-latex", {
+  base: "vs-dark",
+  inherit: true,
+  rules: [
+    { token: "comment", foreground: "5F7891", fontStyle: "italic" },
+    { token: "keyword", foreground: "78B7F2", fontStyle: "bold" },
+    { token: "type.identifier", foreground: "5DD6A7" },
+    { token: "tag", foreground: "A6C8E8" },
+    { token: "string", foreground: "E5C07B" },
+    { token: "number", foreground: "D7A6FF" },
+    { token: "operator", foreground: "6ECAC8" },
+    { token: "delimiter", foreground: "8398AD" },
+  ],
+  colors: {
+    "editor.background": "#09131F",
+    "editor.foreground": "#C2CFDC",
+    "editorLineNumber.foreground": "#40556B",
+    "editorLineNumber.activeForeground": "#8EA3B8",
+    "editorCursor.foreground": "#8BC4FF",
+    "editor.selectionBackground": "#2C5E8F66",
+    "editor.inactiveSelectionBackground": "#234B704D",
+    "editor.lineHighlightBackground": "#101D2B",
+    "editorIndentGuide.background1": "#1B2A3A",
+    "editorIndentGuide.activeBackground1": "#35506B",
+  },
+});
+
+const editorModel = monaco.editor.createModel(SAMPLE_SOURCE, "latex");
+editorModel.updateOptions({ tabSize: 2, insertSpaces: true });
+const sourceEditor = monaco.editor.create(editorElement, {
+  model: editorModel,
+  theme: "stellar-latex",
+  ariaLabel: "LaTeX source code",
+  automaticLayout: true,
+  fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+  fontSize: 13,
+  lineHeight: 22,
+  padding: { top: 16, bottom: 16 },
+  minimap: { enabled: false },
+  glyphMargin: false,
+  folding: true,
+  lineNumbersMinChars: 3,
+  scrollBeyondLastLine: false,
+  smoothScrolling: true,
+  cursorSmoothCaretAnimation: "on",
+  renderLineHighlight: "line",
+  renderWhitespace: "selection",
+  wordWrap: "off",
+  stickyScroll: { enabled: false },
+  bracketPairColorization: { enabled: true },
+  overviewRulerBorder: false,
+  fixedOverflowWidgets: true,
+});
 
 let engine: StellarLatexEngine | undefined;
 let isCompiling = false;
@@ -175,17 +262,12 @@ function engineName(kind: EngineKind): string {
 }
 
 function updateEditorStats(): void {
-  const lines = editor.value.split("\n").length;
-  lineNumbers.textContent = Array.from({ length: lines }, (_, index) => index + 1).join("\n");
-  sourceStats.textContent = `${lines} lines · ${editor.value.length.toLocaleString()} characters`;
-  dirtyIndicator.classList.toggle("visible", editor.value !== lastCompiledSource);
+  const source = editorModel.getValue();
+  sourceStats.textContent = `${editorModel.getLineCount()} lines · ${source.length.toLocaleString()} characters`;
+  dirtyIndicator.classList.toggle("visible", source !== lastCompiledSource);
 }
 
-function setEngineStatus(
-  state: "loading" | "ready" | "compiling" | "error",
-  title: string,
-  detail: string,
-): void {
+function setEngineStatus(state: "loading" | "ready" | "compiling" | "error", title: string, detail: string): void {
   enginePulse.dataset.state = state;
   statusLight.dataset.state = state;
   engineStateLabel.textContent = title;
@@ -241,9 +323,7 @@ async function loadEngine(kind: EngineKind): Promise<void> {
     engineSelect.disabled = false;
     const message = error instanceof Error ? error.message : String(error);
     setEngineStatus("error", `${engineName(kind)} could not start`, message);
-    showError(
-      "The engine assets could not be loaded. Run “pnpm engine:download” and refresh the page.",
-    );
+    showError("The engine assets could not be loaded. Run “pnpm engine:download” and refresh the page.");
   }
 }
 
@@ -261,7 +341,8 @@ async function compile(): Promise<void> {
 
   const startedAt = performance.now();
   try {
-    const result = await engine.compile(editor.value);
+    const source = editorModel.getValue();
+    const result = await engine.compile(source);
     const elapsed = ((performance.now() - startedAt) / 1000).toFixed(2);
     compilerLog.textContent = result.log;
     durationLabel.textContent = `${elapsed}s`;
@@ -269,7 +350,7 @@ async function compile(): Promise<void> {
     if (result.pdf) await showPdf(result.pdf);
 
     if (result.ok && result.pdf) {
-      lastCompiledSource = editor.value;
+      lastCompiledSource = source;
       updateEditorStats();
       setEngineStatus("ready", "PDF compiled successfully", `${engineName(engine.kind)} finished in ${elapsed}s`);
       setLogOpen(false);
@@ -287,7 +368,7 @@ async function compile(): Promise<void> {
     compileButton.classList.remove("is-loading");
     compileButton.disabled = !engine;
     engineSelect.disabled = false;
-    compileLabel.textContent = "Compile PDF";
+    compileLabel.textContent = "Compile";
   }
 }
 
@@ -339,9 +420,7 @@ function showError(message: string): void {
 }
 
 function firstUsefulError(log: string, status: number): string {
-  const errorLine = log
-    .split("\n")
-    .find((line) => line.startsWith("!") || /error/i.test(line));
+  const errorLine = log.split("\n").find((line) => line.startsWith("!") || /error/i.test(line));
   return errorLine?.replace(/^!\s*/, "") || `The engine exited with status ${status}.`;
 }
 
@@ -353,41 +432,14 @@ function downloadPdf(): void {
   anchor.click();
 }
 
-async function loadReleaseMetadata(): Promise<void> {
-  try {
-    const manifestUrl = new URL(`${import.meta.env.BASE_URL}engine/release.json`, document.baseURI);
-    const response = await fetch(manifestUrl);
-    if (!response.ok) return;
-    const manifest = (await response.json()) as ReleaseManifest;
-    releaseVersion.textContent = manifest.tagName;
-    releaseLink.href = manifest.browserDownloadUrl;
-    releaseLink.title = `Download ${manifest.assetName} from GitHub`;
-    footerVersion.textContent = `${engineName(engineSelect.value as EngineKind)} · ${manifest.tagName}`;
-  } catch {
-    // The GitHub releases page remains a valid fallback when metadata is absent.
-  }
-}
-
-editor.addEventListener("input", updateEditorStats);
-editor.addEventListener("scroll", () => {
-  lineNumbers.scrollTop = editor.scrollTop;
-});
-editor.addEventListener("keydown", (event) => {
-  if (event.key === "Tab") {
-    event.preventDefault();
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    editor.setRangeText("  ", start, end, "end");
-    updateEditorStats();
-  }
-});
+editorModel.onDidChangeContent(updateEditorStats);
+sourceEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => void compile());
 
 compileButton.addEventListener("click", compile);
 downloadButton.addEventListener("click", downloadPdf);
 resetButton.addEventListener("click", () => {
-  editor.value = SAMPLE_SOURCE;
-  updateEditorStats();
-  editor.focus();
+  sourceEditor.setValue(SAMPLE_SOURCE);
+  sourceEditor.focus();
 });
 engineSelect.addEventListener("change", async () => {
   clearPdf();
@@ -396,10 +448,9 @@ engineSelect.addEventListener("change", async () => {
   lastCompiledSource = "";
   updateEditorStats();
   const kind = engineSelect.value as EngineKind;
-  footerVersion.textContent = `${engineName(kind)} · ${releaseVersion.textContent ?? "release"}`;
   await loadEngine(kind);
 });
-logButton.addEventListener("click", () => setLogOpen(logDrawer.hidden));
+logButton.addEventListener("click", () => setLogOpen(Boolean(logDrawer.hidden)));
 closeLogButton.addEventListener("click", () => setLogOpen(false));
 showLogButton.addEventListener("click", () => setLogOpen(true));
 document.addEventListener("keydown", (event) => {
@@ -410,10 +461,10 @@ document.addEventListener("keydown", (event) => {
 });
 window.addEventListener("beforeunload", () => {
   engine?.dispose();
+  sourceEditor.dispose();
+  editorModel.dispose();
   if (pdfUrl) URL.revokeObjectURL(pdfUrl);
 });
 
-editor.value = SAMPLE_SOURCE;
 updateEditorStats();
-void loadReleaseMetadata();
 void loadEngine("xetex");

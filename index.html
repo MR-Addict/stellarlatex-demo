@@ -22,36 +22,43 @@
           </span>
           <span>
             <strong>StellarLatex</strong>
-            <small>WebAssembly workspace</small>
+            <small>Local LaTeX workspace</small>
           </span>
         </a>
 
+        <div class="engine-state" aria-live="polite">
+          <span id="engine-pulse" class="engine-pulse"></span>
+          <div>
+            <strong id="engine-state-label">Starting XeTeX…</strong>
+            <small id="engine-state-detail">Loading the WebAssembly runtime</small>
+          </div>
+        </div>
+
         <div class="topbar-actions">
-          <span class="privacy-note">
-            <span class="privacy-dot"></span>
-            Files stay in this browser
-          </span>
-          <a id="release-link" class="release-link" href="https://github.com/Arxtect/StellarLatex/releases/latest" target="_blank" rel="noreferrer">
+          <button id="log-button" class="secondary-button toolbar-button" type="button" aria-expanded="false">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v12H4zM7 8l2 2-2 2m4 0h2" /></svg>
+            <span>Log</span>
+          </button>
+          <label class="engine-select-label" for="engine-select">Engine</label>
+          <select id="engine-select" class="engine-select" aria-label="LaTeX engine">
+            <option value="pdftex">pdfTeX</option>
+            <option value="xetex" selected>XeTeX</option>
+          </select>
+          <button id="download-button" class="icon-button" type="button" disabled aria-label="Download compiled PDF" title="Download PDF">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v10m0 0 4-4m-4 4L6 8M3 14.5V17h14v-2.5" /></svg>
-            <span>Engine <b id="release-version">release</b></span>
-          </a>
+          </button>
+          <button id="compile-button" class="compile-button" type="button" disabled>
+            <span class="button-icon">
+              <svg class="play-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5l8 5.5-8 5.5z" /></svg>
+              <svg class="spinner-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" /></svg>
+            </span>
+            <span id="compile-label">Compile</span>
+            <kbd>⌘ ↵</kbd>
+          </button>
         </div>
       </header>
 
       <main class="workspace">
-        <section class="intro" aria-labelledby="workspace-title">
-          <div>
-            <p class="eyebrow"><span></span> Local typesetting, zero uploads</p>
-            <h1 id="workspace-title">Write LaTeX. See the PDF.</h1>
-            <p>Edit the source, then compile it entirely on your machine with the StellarLatex WebAssembly engine.</p>
-          </div>
-          <div class="intro-stats" aria-label="Engine details">
-            <div><span>Runtime</span><strong>Browser</strong></div>
-            <div><span>Transfer</span><strong>None</strong></div>
-            <div><span>Output</span><strong>PDF</strong></div>
-          </div>
-        </section>
-
         <section class="editor-shell" aria-label="LaTeX editor">
           <div class="panel source-panel">
             <div class="panel-heading">
@@ -62,13 +69,10 @@
               </div>
               <button id="reset-button" class="text-button" type="button">Reset sample</button>
             </div>
-            <div class="code-wrap">
-              <div id="line-numbers" class="line-numbers" aria-hidden="true"></div>
-              <textarea id="source-editor" spellcheck="false" aria-label="LaTeX source code"></textarea>
-            </div>
+            <div id="source-editor" class="source-editor" aria-label="LaTeX source code"></div>
             <div class="panel-footer">
               <span id="source-stats">0 lines · 0 characters</span>
-              <span>UTF-8</span>
+              <span>LaTeX · UTF-8</span>
             </div>
           </div>
 
@@ -79,16 +83,7 @@
                 <span id="status-label">Loading engine</span>
                 <span id="duration-label" class="duration-label"></span>
               </div>
-              <div class="preview-actions">
-                <label class="engine-select-label" for="engine-select">Engine</label>
-                <select id="engine-select" class="engine-select">
-                  <option value="pdftex">pdfTeX</option>
-                  <option value="xetex" selected>XeTeX</option>
-                </select>
-                <button id="download-button" class="icon-button" type="button" disabled aria-label="Download compiled PDF" title="Download PDF">
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v10m0 0 4-4m-4 4L6 8M3 14.5V17h14v-2.5" /></svg>
-                </button>
-              </div>
+              <span class="privacy-note"><span class="privacy-dot"></span>Runs locally</span>
             </div>
             <div id="preview-stage" class="preview-stage">
               <div id="empty-state" class="empty-state">
@@ -110,30 +105,6 @@
           </div>
         </section>
 
-        <section class="control-bar" aria-label="Compile controls">
-          <div class="engine-state">
-            <span id="engine-pulse" class="engine-pulse"></span>
-            <div>
-              <strong id="engine-state-label">Starting XeTeX…</strong>
-              <small id="engine-state-detail">Loading the WebAssembly runtime</small>
-            </div>
-          </div>
-          <div class="control-actions">
-            <button id="log-button" class="secondary-button" type="button" aria-expanded="false">
-              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v12H4zM7 8l2 2-2 2m4 0h2" /></svg>
-              Compiler log
-            </button>
-            <button id="compile-button" class="compile-button" type="button" disabled>
-              <span class="button-icon">
-                <svg class="play-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5l8 5.5-8 5.5z" /></svg>
-                <svg class="spinner-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" /></svg>
-              </span>
-              <span id="compile-label">Compile PDF</span>
-              <kbd>⌘ ↵</kbd>
-            </button>
-          </div>
-        </section>
-
         <section id="log-drawer" class="log-drawer" aria-label="Compiler log" hidden>
           <div class="log-heading">
             <div><span class="terminal-dot red"></span><span class="terminal-dot amber"></span><span class="terminal-dot green"></span><strong>Compiler output</strong></div>
@@ -144,11 +115,6 @@
           <pre id="compiler-log">The compiler log will appear here after the first run.</pre>
         </section>
       </main>
-
-      <footer>
-        <p>Powered by <a href="https://github.com/Arxtect/StellarLatex" target="_blank" rel="noreferrer">StellarLatex</a> · LaTeX compilation stays on your device.</p>
-        <span id="footer-version">Vite demo</span>
-      </footer>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
