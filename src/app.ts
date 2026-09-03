@@ -19,6 +19,17 @@ function firstUsefulError(log: string, status: number): string {
   return errorLine?.replace(/^!\s*/, "") || "The engine exited with status " + status + ".";
 }
 
+interface CachedCompile {
+  source: string;
+  pdf: ArrayBuffer;
+  log: string;
+}
+
+interface DisplayedCompile {
+  kind: EngineKind;
+  source: string;
+}
+
 export class LatexWorkspaceApp {
   private readonly storage = new SourceStorage();
   private readonly workspace = new WorkspaceView();
@@ -32,6 +43,8 @@ export class LatexWorkspaceApp {
   );
 
   private engine?: StellarLatexEngine;
+  private readonly compileCache = new Map<EngineKind, CachedCompile>();
+  private displayedCompile?: DisplayedCompile;
   private isCompiling = false;
   private lastCompiledSource = "";
   private isStarted = false;
@@ -60,6 +73,8 @@ export class LatexWorkspaceApp {
   dispose(): void {
     this.storage.save(this.editor.source);
     this.engine?.dispose();
+    this.compileCache.clear();
+    this.displayedCompile = undefined;
     this.preview.dispose();
     this.editor.dispose();
     this.workspace.dispose();
@@ -134,6 +149,11 @@ export class LatexWorkspaceApp {
 
   private async compile(): Promise<void> {
     if (!this.engine || this.isCompiling) return;
+    const engine = this.engine;
+    const kind = engine.kind;
+    const source = this.editor.source;
+    const cached = this.compileCache.get(kind);
+
     this.isCompiling = true;
     this.workspace.setControls({
       canCompile: false,
@@ -142,16 +162,21 @@ export class LatexWorkspaceApp {
     });
     this.workspace.hideMessages();
     this.workspace.setDuration("");
-    this.workspace.setStatus(
-      "compiling",
-      "Running " + engineName(this.engine.kind) + "…",
-      "Typesetting main.tex locally",
-    );
 
-    const startedAt = performance.now();
     try {
-      const source = this.editor.source;
-      const result = await this.engine.compile(source);
+      if (cached?.source === source) {
+        await this.restoreCachedCompile(kind, cached);
+        return;
+      }
+
+      this.workspace.setStatus(
+        "compiling",
+        "Running " + engineName(kind) + "…",
+        "Typesetting main.tex locally",
+      );
+
+      const startedAt = performance.now();
+      const result = await engine.compile(source);
       const elapsed = ((performance.now() - startedAt) / 1000).toFixed(2);
       this.workspace.setCompilerLog(result.log);
       this.workspace.setDuration(elapsed + "s");
@@ -162,12 +187,18 @@ export class LatexWorkspaceApp {
       }
 
       if (result.ok && result.pdf) {
+        this.compileCache.set(kind, {
+          source,
+          pdf: result.pdf,
+          log: result.log,
+        });
+        this.displayedCompile = { kind, source };
         this.lastCompiledSource = source;
         this.updateEditorStats(this.editor.lineCount, this.editor.source);
         this.workspace.setStatus(
           "ready",
           "PDF compiled successfully",
-          engineName(this.engine.kind) + " finished in " + elapsed + "s",
+          engineName(kind) + " finished in " + elapsed + "s",
         );
         this.workspace.setLogOpen(false);
       } else {
@@ -193,8 +224,40 @@ export class LatexWorkspaceApp {
     }
   }
 
+  private async restoreCachedCompile(
+    kind: EngineKind,
+    cached: CachedCompile,
+  ): Promise<void> {
+    const isAlreadyDisplayed =
+      this.displayedCompile?.kind === kind &&
+      this.displayedCompile.source === cached.source;
+
+    if (!isAlreadyDisplayed) {
+      this.workspace.setStatus(
+        "compiling",
+        "Restoring cached PDF…",
+        "Rendering the last successful result",
+      );
+      await this.preview.render(cached.pdf);
+    }
+
+    this.displayedCompile = { kind, source: cached.source };
+    this.lastCompiledSource = cached.source;
+    this.workspace.setCompilerLog(cached.log);
+    this.workspace.setDownloadEnabled(true);
+    this.workspace.setDuration("Cached");
+    this.updateEditorStats(this.editor.lineCount, this.editor.source);
+    this.workspace.setStatus(
+      "ready",
+      "PDF restored from cache",
+      engineName(kind) + " reused the last successful result",
+    );
+    this.workspace.setLogOpen(false);
+  }
+
   private clearPreview(): void {
     this.preview.clear();
+    this.displayedCompile = undefined;
     this.workspace.setDownloadEnabled(false);
   }
 
